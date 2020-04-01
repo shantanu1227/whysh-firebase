@@ -8,7 +8,7 @@ router.post("/users", middlewares.authHeaderCheck, middlewares.authenticateUser,
 
 router.get("/users/:userType/tasks", middlewares.authHeaderCheck, middlewares.setUser, taskController.getUserTasks);
 router.post("/tasks", middlewares.authHeaderCheck, middlewares.setUser, taskController.createTask);
-router.get("/tasks/:pincode/incomplete", middlewares.authHeaderCheck, taskController.getPendingTasks);
+router.get("/tasks/:pincode/incomplete", middlewares.authHeaderCheck, middlewares.setUser, taskController.getPendingTasks);
 router.patch("/tasks/:taskId/assign", middlewares.authHeaderCheck, middlewares.setUser, taskController.assignTask);
 router.patch("/tasks/:taskId/complete", middlewares.authHeaderCheck, middlewares.setUser, taskController.completeTask);
 router.patch("/tasks/:taskId/cancel", middlewares.authHeaderCheck, middlewares.setUser, taskController.cancelTask);

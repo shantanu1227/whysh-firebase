@@ -94,7 +94,8 @@ function getUserTasks(_req, res) {
     }).catch((error) => {
         console.error('Error fetching pending task', error);
         return res.status(400).json({
-            success: false
+            success: false,
+            message: error.message
         })
     })
 }
@@ -103,7 +104,7 @@ function getPendingTasks(_req, res) {
     const pincode = _req.params.pincode;
     const page = _req.query.page?_req.query.page:null;
     const pageSize = 50;
-    taskModel.list(page, pageSize, pincode, taskModel.TASK_STATUS_PENDING).then((paginate) => {
+    taskModel.list(page, pageSize, pincode, taskModel.TASK_STATUS_PENDING, null, null, _req.user.id).then((paginate) => {
         let tasks = [];
         paginate.docs.forEach(doc => {
             tasks.push(taskListMapper(doc.ref.id, doc.data()));
@@ -116,7 +117,8 @@ function getPendingTasks(_req, res) {
     }).catch((error) => {
         console.error('Error fetching pending task', error);
         return res.status(400).json({
-            success: false
+            success: false,
+            message: error.message
         })
     })
 }

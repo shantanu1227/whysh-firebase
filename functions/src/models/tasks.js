@@ -34,7 +34,7 @@ function create(user, address, categories, task) {
         });
         let data = {
             status: TASK_STATUS_PENDING,
-            categories: categories,
+            categories: categoriesDb,
             address: address,
             pincode: parseInt(address.pincode),
             task: task,
@@ -51,7 +51,7 @@ function create(user, address, categories, task) {
     }
 }
 
-function list(page, pageSize, pincode=null, status=null, userId=null, userType=null) {
+function list(page, pageSize, pincode = null, status = null, userId = null, userType = null, excludeUserId = null) {
     const field = 'createdAt';
     let ref = firestore.collection(modelHelper.TASK_COLLECTION);
     if (pincode !== null) {
@@ -70,7 +70,21 @@ function list(page, pageSize, pincode=null, status=null, userId=null, userType=n
     if (page !== null) {
         page = timeStamp.fromDate(new Date(page));
     }
-    return modelHelper.paginate(ref, field, page, pageSize);
+    if (excludeUserId !== null) {
+        return modelHelper.paginate(ref, field, page, pageSize).then((data) => {
+            let filteredDocs = [];
+            data.docs.forEach(doc => {
+                if (doc.get('createdBy._id') !== excludeUserId) {
+                    filteredDocs.push(doc);
+                }
+            });
+            return Promise.resolve({ docs: filteredDocs, next: data.next });
+        }).catch((error) => {
+            return Promise.reject(error);
+        });
+    } else {
+        return modelHelper.paginate(ref, field, page, pageSize);
+    }
 }
 
 function getTaskRef(id) {
@@ -86,64 +100,64 @@ function assign(id, user) {
     let taskRef = getTaskRef(id);
     let transaction = firestore.runTransaction(t => {
         return t.get(taskRef)
-                .then(doc => {
-                    if(doc.exists) {
-                        if (assignedTo._id === doc.get('createdBy._id')) {
-                            return Promise.reject(Error('Cannot assign to self.'));
-                        }
-                        let status = doc.data().status;
-                        if (status === TASK_STATUS_PENDING) {
-                            const updatedData = {assignedTo: assignedTo, status: TASK_STATUS_ASSIGNED, updatedAt: new Date()};
-                            t.update(taskRef, updatedData);
-                            return Promise.resolve({doc, updatedData});
-                        }
-                    } else {
-                        return Promise.reject(Error('Document does not exists.'));
+            .then(doc => {
+                if (doc.exists) {
+                    if (assignedTo._id === doc.get('createdBy._id')) {
+                        return Promise.reject(Error('Cannot assign to self.'));
                     }
+                    let status = doc.data().status;
+                    if (status === TASK_STATUS_PENDING) {
+                        const updatedData = { assignedTo: assignedTo, status: TASK_STATUS_ASSIGNED, updatedAt: new Date() };
+                        t.update(taskRef, updatedData);
+                        return Promise.resolve({ doc, updatedData });
+                    }
+                } else {
+                    return Promise.reject(Error('Document does not exists.'));
+                }
                 return Promise.reject(Error('Invalid task state'));
-                });
+            });
     });
     return transaction;
 }
 
 function cancel(id, user) {
-    let updatedData = {status: TASK_STATUS_CANCELLED, cancelledAt: new Date(), updatedAt: new Date()}
+    let updatedData = { status: TASK_STATUS_CANCELLED, cancelledAt: new Date(), updatedAt: new Date() }
     return getTaskRef(id).get()
-    .then(doc => {
-        if (doc.exists) {
-            if (doc.data().status !== TASK_STATUS_CANCELLED) {
-                if (doc.get('createdBy._id') === user.id) {
-                    getTaskRef(id).update(updatedData);
-                    return Promise.resolve({doc, updatedData});
-                } else {
-                    return Promise.reject(Error('Document does not belong to user.'));
+        .then(doc => {
+            if (doc.exists) {
+                if (doc.data().status !== TASK_STATUS_CANCELLED) {
+                    if (doc.get('createdBy._id') === user.id) {
+                        getTaskRef(id).update(updatedData);
+                        return Promise.resolve({ doc, updatedData });
+                    } else {
+                        return Promise.reject(Error('Document does not belong to user.'));
+                    }
                 }
+            } else {
+                return Promise.reject(Error('Document does not exists.'));
             }
-        } else {
-            return Promise.reject(Error('Document does not exists.'));
-        }
-        return Promise.reject(Error('Invalid task state'));
-    });
+            return Promise.reject(Error('Invalid task state'));
+        });
 }
 
 function complete(id, user) {
-    let updatedData = {status: TASK_STATUS_COMPLETED, completedAt: new Date(), updatedAt: new Date()}
+    let updatedData = { status: TASK_STATUS_COMPLETED, completedAt: new Date(), updatedAt: new Date() }
     return getTaskRef(id).get()
-    .then(doc => {
-        if (doc.exists) {
-            if (doc.data().status === TASK_STATUS_ASSIGNED) {
-                if (doc.get('createdBy._id') === user.id) {
-                    getTaskRef(id).update(updatedData);
-                    return Promise.resolve({doc, updatedData});
-                } else {
-                    return Promise.reject(Error('Document does not belong to user.'));
+        .then(doc => {
+            if (doc.exists) {
+                if (doc.data().status === TASK_STATUS_ASSIGNED) {
+                    if (doc.get('createdBy._id') === user.id) {
+                        getTaskRef(id).update(updatedData);
+                        return Promise.resolve({ doc, updatedData });
+                    } else {
+                        return Promise.reject(Error('Document does not belong to user.'));
+                    }
                 }
+            } else {
+                return Promise.reject(Error('Document does not exists.'));
             }
-        } else {
-            return Promise.reject(Error('Document does not exists.'));
-        }
-        return Promise.reject(Error('Invalid task state'));
-    });
+            return Promise.reject(Error('Invalid task state'));
+        });
 }
 
 module.exports = {
