@@ -69,6 +69,8 @@ function list(page, pageSize, pincode = null, status = null, userId = null, user
     }
     if (page !== null) {
         page = timeStamp.fromDate(new Date(page));
+    } else {
+        page = timeStamp.fromDate(new Date());
     }
     if (excludeUserId !== null) {
         return modelHelper.paginate(ref, field, page, pageSize).then((data) => {
